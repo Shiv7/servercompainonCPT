@@ -7,6 +7,7 @@ from typing import cast
 
 from gitingest.clone import clone_repo
 from gitingest.ingestion import ingest_query
+from gitingest.llm_client import get_completion
 from gitingest.query_parser import IngestionQuery, parse_query
 from gitingest.utils.git_utils import validate_github_token
 from server.models import IngestErrorResponse, IngestResponse, IngestSuccessResponse
@@ -60,9 +61,6 @@ async def process_query(
         msg = f"Invalid pattern type: {pattern_type}"
         raise ValueError(msg)
 
-    if token:
-        validate_github_token(token)
-
     max_file_size = log_slider_to_size(slider_position)
 
     query: IngestionQuery | None = None
@@ -72,32 +70,19 @@ async def process_query(
         query = await parse_query(
             source=input_text,
             max_file_size=max_file_size,
-            from_web=True,
+            from_web=False,
             include_patterns=include_patterns,
             ignore_patterns=exclude_patterns,
-            token=token,
         )
-        query.ensure_url()
-
-        # Sets the "<user>/<repo>" for the page title
-        short_repo_url = f"{query.user_name}/{query.repo_name}"
-
-        clone_config = query.extract_clone_config()
-        await clone_repo(clone_config, token=token)
+        short_repo_url = input_text
 
         summary, tree, content = ingest_query(query)
 
-        local_txt_file = Path(clone_config.local_path).with_suffix(".txt")
-
-        with local_txt_file.open("w", encoding="utf-8") as f:
-            f.write(tree + "\n" + content)
+        llm_response = get_completion(content)
 
     except Exception as exc:
-        if query and query.url:
-            _print_error(query.url, exc, max_file_size, pattern_type, pattern)
-        else:
-            print(f"{Colors.BROWN}WARN{Colors.END}: {Colors.RED}<-  {Colors.END}", end="")
-            print(f"{Colors.RED}{exc}{Colors.END}")
+        print(f"{Colors.BROWN}WARN{Colors.END}: {Colors.RED}<-  {Colors.END}", end="")
+        print(f"{Colors.RED}{exc}{Colors.END}")
 
         return IngestErrorResponse(error=str(exc))
 
@@ -107,11 +92,8 @@ async def process_query(
             "download full ingest to see more)\n" + content[:MAX_DISPLAY_SIZE]
         )
 
-    query.ensure_url()
-    query.url = cast("str", query.url)
-
     _print_success(
-        url=query.url,
+        url=input_text,
         max_file_size=max_file_size,
         pattern_type=pattern_type,
         pattern=pattern,
@@ -125,6 +107,7 @@ async def process_query(
         ingest_id=query.id,
         tree=tree,
         content=content,
+        llm_response=llm_response,
         default_max_file_size=slider_position,
         pattern_type=pattern_type,
         pattern=pattern,
@@ -198,7 +181,6 @@ def _print_success(url: str, max_file_size: int, pattern_type: str, pattern: str
         A summary of the query result, including details like estimated tokens.
 
     """
-    estimated_tokens = summary[summary.index("Estimated tokens:") + len("Estimated ") :]
     print(f"{Colors.GREEN}INFO{Colors.END}: {Colors.GREEN}<-  {Colors.END}", end="")
     _print_query(url, max_file_size, pattern_type, pattern)
-    print(f" | {Colors.PURPLE}{estimated_tokens}{Colors.END}")
+    print(f" | {Colors.PURPLE}Success{Colors.END}")

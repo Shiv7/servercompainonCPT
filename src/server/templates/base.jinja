@@ -42,30 +42,20 @@
         <meta name="twitter:image"       content="/static/og-image.png">
         {# Title #}
         <title>
-            {% block title %}
-                {% if short_repo_url %}
-                    Gitingest - {{ short_repo_url }}
-                {% else %}
-                    Gitingest
-                {% endif %}
-            {% endblock %}
+            Server Companion CPT
         </title>
         <script src="https://cdn.tailwindcss.com"></script>
         {% include 'components/tailwind_components.html' %}
     </head>
     <body class="bg-[#FFFDF8] min-h-screen flex flex-col">
-        {% include 'components/navbar.jinja' %}
         {# Main content wrapper #}
         <main class="flex-1 w-full">
             <div class="max-w-4xl mx-auto px-4 py-8">
                 {% block content %}{% endblock %}
             </div>
         </main>
-        {# Footer #}
-        {% include 'components/footer.jinja' %}
         {# Scripts #}
         <script defer src="/static/js/index.js"></script>
         <script defer src="/static/js/utils.js"></script>
-        <script defer src="/static/js/posthog.js"></script>
     </body>
 </html>

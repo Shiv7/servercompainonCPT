@@ -4,8 +4,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import tiktoken
-
 from gitingest.schemas import FileSystemNode, FileSystemNodeType
 from gitingest.utils.compat_func import readlink
 
@@ -48,10 +46,6 @@ def format_node(node: FileSystemNode, query: IngestionQuery) -> tuple[str, str, 
     tree = "Directory structure:\n" + _create_tree_structure(query, node=node)
 
     content = _gather_file_contents(node)
-
-    token_estimate = _format_token_count(tree + content)
-    if token_estimate:
-        summary += f"\nEstimated tokens: {token_estimate}"
 
     return summary, tree, content
 
@@ -167,31 +161,3 @@ def _create_tree_structure(
         for i, child in enumerate(node.children):
             tree_str += _create_tree_structure(query, node=child, prefix=prefix, is_last=i == len(node.children) - 1)
     return tree_str
-
-
-def _format_token_count(text: str) -> str | None:
-    """Return a human-readable token-count string (e.g. 1.2k, 1.2 M).
-
-    Parameters
-    ----------
-    text : str
-        The text string for which the token count is to be estimated.
-
-    Returns
-    -------
-    str | None
-        The formatted number of tokens as a string (e.g., ``"1.2k"``, ``"1.2M"``), or ``None`` if an error occurs.
-
-    """
-    try:
-        encoding = tiktoken.get_encoding("o200k_base")  # gpt-4o, gpt-4o-mini
-        total_tokens = len(encoding.encode(text, disallowed_special=()))
-    except (ValueError, UnicodeEncodeError) as exc:
-        print(exc)
-        return None
-
-    for threshold, suffix in _TOKEN_THRESHOLDS:
-        if total_tokens >= threshold:
-            return f"{total_tokens / threshold:.1f}{suffix}"
-
-    return str(total_tokens)

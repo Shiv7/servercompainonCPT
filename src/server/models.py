@@ -93,6 +93,7 @@ class IngestSuccessResponse(BaseModel):
     default_max_file_size: int = Field(..., description="File size slider position used")
     pattern_type: str = Field(..., description="Pattern type used")
     pattern: str = Field(..., description="Pattern used")
+    llm_response: str | None = Field(default=None, description="Response from the LLM")
 
 
 class IngestErrorResponse(BaseModel):

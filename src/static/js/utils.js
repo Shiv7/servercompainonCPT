@@ -179,6 +179,7 @@ function handleSuccessfulResponse(data) {
     document.getElementById('result-summary').value = data.summary || '';
     document.getElementById('directory-structure-content').value = data.tree || '';
     document.getElementById('result-content').value = data.content || '';
+    document.getElementById('llm-response').value = data.llm_response || '';
 
     // Populate directory structure lines as clickable <pre> elements
     const dirPre = document.getElementById('directory-structure-pre');
